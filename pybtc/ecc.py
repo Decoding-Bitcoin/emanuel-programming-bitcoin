@@ -44,10 +44,12 @@ class FieldElement:
         n = exponent % (self.prime - 1)
         num = pow(self.num, n, self.prime)
 
-        result = (self.num ** exponent) % self.prime
-        return self.__class__(result, self.prime)
+        return self.__class__(num, self.prime)
 
     def __truediv__(self, other):
+        if other.num == 0:
+            raise ZeroDivisionError('Cannot divide by zero')
+
         if self.prime != other.prime:
             raise TypeError('Cannot divide two numbers in different Fields')
 
