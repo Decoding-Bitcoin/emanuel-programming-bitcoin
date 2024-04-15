@@ -1,0 +1,24 @@
+[project]
+name = "pybtc"
+version = "0.0.1"
+authors = [{ name = "Emanuel Medeiros", email = "emanuels313@gmail.com" }]
+
+description = "Programming Bitcoin exercises"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+
+[project.urls]
+Homepage = "https://github.com/Decoding-Bitcoin/emanuel-programming-bitcoin"
+Issues = "https://github.com/Decoding-Bitcoin/emanuel-programming-bitcoin/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pybtc/"]
