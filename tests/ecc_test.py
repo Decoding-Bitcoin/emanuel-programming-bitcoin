@@ -1,8 +1,14 @@
 from unittest import TestCase
-from pybtc.ecc import FieldElement
+from pybtc.ecc import *
 
 
 class FieldElementTest(TestCase):
+    def test_initialize(self):
+        with self.assertRaises(ValueError):
+            fe1 = FieldElement(13, 13)
+        with self.assertRaises(ValueError):
+            fe2 = FieldElement(1, -13)
+
     def test_eq(self):
         fe_10_13_a = FieldElement(10, 13)
         fe_10_13_b = FieldElement(10, 13)
@@ -101,3 +107,43 @@ class FieldElementTest(TestCase):
             fe_7_19 / fe_10_11
         with self.assertRaises(ZeroDivisionError):
             fe_7_19 / fe_0_19
+
+
+class PointTest(TestCase):
+    def test_initialize(self):
+        p1 = Point(-1, -1, 5, 7)
+        p2 = Point(None, None, 5, 7)
+        with self.assertRaises(ValueError):
+            p3 = Point(-1, -2, 5, 7)
+
+    def test_eq(self):
+        p1 = Point(-1, -1, 5, 7)
+        p2 = Point(-1, -1, 5, 7)
+        p3 = Point(2, 5, 5, 7)
+        self.assertEqual(p1, p2)
+        self.assertFalse(p1 == p3)
+
+    def test_ne(self):
+        p1 = Point(-1, -1, 5, 7)
+        p2 = Point(-1, -1, 5, 7)
+        p3 = Point(2, 5, 5, 7)
+        self.assertTrue(p1 != p3)
+        self.assertFalse(p1 != p2)
+
+    def test_add(self):
+        p1 = Point(-1, -1, 5, 7)
+        p2 = Point(None, None, 5, 7)
+        p3 = Point(None, None, 0, 7)
+        p4 = Point(-1, 1, 5, 7)
+        p5 = Point(2, 5, 5, 7)
+        p6 = Point(3, -7, 5, 7)
+        p7 = Point(18, 77, 5, 7)
+        p8 = Point(3, 0, 0, -27)
+        p9 = Point(None, None, 0, -27)
+        self.assertEqual(p1 + p2, p1)
+        self.assertEqual(p1 + p4, p2)
+        self.assertEqual(p5 + p1, p6)
+        self.assertEqual(p1 + p1, p7)
+        self.assertEqual(p8 + p8, p9)
+        with self.assertRaises(TypeError):
+            p1 + p3
