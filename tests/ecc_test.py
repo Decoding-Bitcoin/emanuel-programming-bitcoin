@@ -1,5 +1,6 @@
 from unittest import TestCase
 from pybtc.ecc import *
+from pybtc.constants import Gx, Gy
 
 
 class FieldElementTest(TestCase):
@@ -147,3 +148,105 @@ class PointTest(TestCase):
         self.assertEqual(p8 + p8, p9)
         with self.assertRaises(TypeError):
             p1 + p3
+
+    def on_curve_test(self):
+        prime = 223
+        a = FieldElement(0, prime)
+        b = FieldElement(7, prime)
+        valid_points = ((192, 105), (17, 56), (1, 193))
+        invalid_points = ((200, 119), (42, 99))
+        for x_raw, y_raw in valid_points:
+            x = FieldElement(x_raw, prime)
+            y = FieldElement(y_raw, prime)
+            Point(x, y, a, b)
+        for x_raw, y_raw in invalid_points:
+            x = FieldElement(x_raw, prime)
+            y = FieldElement(y_raw, prime)
+            with self.assertRaises(ValueError):
+                Point(x, y, a, b)
+
+    def test_add_over_finite_fields(self):
+        prime = 223
+        a = FieldElement(0, prime)
+        b = FieldElement(7, prime)
+
+        # First assert
+        x1 = FieldElement(170, prime)
+        y1 = FieldElement(142, prime)
+        p1 = Point(x1, y1, a, b)
+        x2 = FieldElement(60, prime)
+        y2 = FieldElement(139, prime)
+        p2 = Point(x2, y2, a, b)
+        x3 = FieldElement(220, prime)
+        y3 = FieldElement(181, prime)
+        p3 = Point(x3, y3, a, b)
+        self.assertEqual(p1 + p2, p3)
+
+        # Second assert
+        x1 = FieldElement(47, prime)
+        y1 = FieldElement(71, prime)
+        p1 = Point(x1, y1, a, b)
+        x2 = FieldElement(17, prime)
+        y2 = FieldElement(56, prime)
+        p2 = Point(x2, y2, a, b)
+        x3 = FieldElement(215, prime)
+        y3 = FieldElement(68, prime)
+        p3 = Point(x3, y3, a, b)
+        self.assertEqual(p1 + p2, p3)
+
+        # Third assert
+        x1 = FieldElement(143, prime)
+        y1 = FieldElement(98, prime)
+        p1 = Point(x1, y1, a, b)
+        x2 = FieldElement(76, prime)
+        y2 = FieldElement(66, prime)
+        p2 = Point(x2, y2, a, b)
+        x3 = FieldElement(47, prime)
+        y3 = FieldElement(71, prime)
+        p3 = Point(x3, y3, a, b)
+        self.assertEqual(p1 + p2, p3)
+
+    def test_rmul(self):
+        prime = 223
+        a = FieldElement(0, prime)
+        b = FieldElement(7, prime)
+        x1 = FieldElement(47, prime)
+        y1 = FieldElement(71, prime)
+        p1 = Point(x1, y1, a, b)
+        x2 = FieldElement(36, prime)
+        y2 = FieldElement(111, prime)
+        p2 = Point(x2, y2, a, b)
+        x3 = FieldElement(15, prime)
+        y3 = FieldElement(86, prime)
+        p3 = Point(x3, y3, a, b)
+        p4 = Point(None, None, a, b)
+        self.assertEqual(2 * p1, p2)
+        self.assertEqual(1 * p1, p1)
+        self.assertEqual(18 * p1, p3)
+        self.assertEqual(21 * p1, p4)
+
+
+class S256PointTest(TestCase):
+    def test_order(self):
+        g = S256Point(Gx, Gy)
+        p = N * g
+        p_inf = S256Point(None, None)
+        self.assertEqual(p, p_inf)
+
+    def test_verify_signature(self):
+        p = S256Point(0x887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c,
+                      0x61de6d95231cd89026e286df3b6ae4a894a3378e393e93a0f45b666329a0ae34)
+
+        z1 = 0xec208baa0fc1c19f708a9ca96fdeff3ac3f230bb4a7ba4aede4942ad003c0f60
+        r1 = 0xac8d1c87e51d0d441be8b3dd5b05c8795b48875dffe00b7ffcfac23010d3a395
+        s1 = 0x68342ceff8935ededd102dd876ffd6ba72d6a427a3edb13d26eb0781cb423c4
+        sig1 = Signature(r1, s1)
+        self.assertTrue(p.verify(z1, sig1))
+
+        z2 = 0x7c076ff316692a3d7eb3c3bb0f8b1488cf72e1afcd929e29307032997a838a3d
+        r2 = 0xeff69ef2b1bd93a66ed5219add4fb51e11a840f404876325a1e8ffe0529a2c
+        s2 = 0xc7207fee197d27c618aea621406f6bf5ef6fca38681d82b2f06fddbdce6feab6
+        sig2 = Signature(r2, s2)
+        self.assertTrue(p.verify(z2, sig2))
+
+        self.assertFalse(p.verify(z1, sig2))
