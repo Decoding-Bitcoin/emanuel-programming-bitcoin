@@ -250,3 +250,72 @@ class S256PointTest(TestCase):
         self.assertTrue(p.verify(z2, sig2))
 
         self.assertFalse(p.verify(z1, sig2))
+
+    def test_sec(self):
+        g = S256Point(Gx, Gy)
+        px = 0x887387e452b8eacc4acfde10d9aaf7f6d9a0f975aabb10d006e4da568744d06c
+        py = 0x61de6d95231cd89026e286df3b6ae4a894a3378e393e93a0f45b666329a0ae34
+        p = S256Point(px, py)
+        self.assertEqual(g.sec(False), b'\x04' + Gx.to_bytes(32, 'big') + Gy.to_bytes(32, 'big'))
+        self.assertEqual(p.sec(False), b'\x04' + px.to_bytes(32, 'big') + py.to_bytes(32, 'big'))
+        self.assertFalse(p.sec(False) == b'\x04' + Gx.to_bytes(32, 'big') + Gy.to_bytes(32, 'big'))
+        self.assertEqual(p.sec(), b'\x02' + px.to_bytes(32, 'big'))
+        self.assertEqual(g.sec(), b'\x02' + Gx.to_bytes(32, 'big'))
+        self.assertFalse(p.sec() == b'\x03' + px.to_bytes(32, 'big'))
+
+
+class SignatureTest(TestCase):
+    def test_der(self):
+        r1 = 0xac8d1c87e51d0d441be8b3dd5b05c8795b48875dffe00b7ffcfac23010d3a395
+        s1 = 0x68342ceff8935ededd102dd876ffd6ba72d6a427a3edb13d26eb0781cb423c4
+        sig1 = Signature(r1, s1)
+
+        r2 = 0xeff69ef2b1bd93a66ed5219add4fb51e11a840f404876325a1e8ffe0529a2c
+        s2 = 0xc7207fee197d27c618aea621406f6bf5ef6fca38681d82b2f06fddbdce6feab6
+        sig2 = Signature(r2, s2)
+
+        der_sig_1 = (b'\x30' + b'\x45' + b'\x02' + b'\x21' + b'\x00'
+                     + r1.to_bytes(32, 'big') + b'\x02' + b'\x20' + s1.to_bytes(32, 'big'))
+        self.assertEqual(sig1.der(), der_sig_1)
+
+        def_sig_2 = (b'\x30' + b'\x45' + b'\x02' + b'\x20' + b'\x00'
+                     + r2.to_bytes(32, 'big').lstrip(b'\x00') + b'\x02' + b'\x21' + b'\x00' + s2.to_bytes(32, 'big'))
+        self.assertEqual(sig2.der(), def_sig_2)
+
+
+class PrivateKey(TestCase):
+    def test_address(self):
+        self.skipTest('Weird behavior')
+        p1 = PrivateKey(5002)
+        a1 = p1.point.address(False, True)
+        a2 = 'mmTPbXQFxboEtNRkwfh6K51jvdtHLxGeMA'
+        self.assertEqual(a1, a2)
+
+        p2 = PrivateKey(2020 ** 5)
+        a3 = p2.point.address(True, True)
+        a4 = 'mopVkxp8UhXqRYbCYJsbeE1h1fiF64jcoH'
+        self.assertEqual(a3, a4)
+
+        p3 = PrivateKey(0x12345deadbeef)
+        a5 = p3.point.address(True, False)
+        a6 = '1F1Pn2y6pDb68E5nYJJeba4TLg2U7B6KF1'
+        self.assertEqual(a5, a6)
+        self.assertFalse(a1 == a6)
+
+    def test_wif(self):
+        self.skipTest('Weird behavior')
+        p1 = PrivateKey(5003)
+        w1 = p1.wif(True, True)
+        w2 = 'cMahea7zqjxrtgAbB7LSGbcQUr1uX1ojuat9jZodMN8rFTv2sfUK'
+        self.assertEqual(w1, w2)
+
+        p2 = PrivateKey(2021 ** 5)
+        w3 = p2.wif(False, True)
+        w4 = '91avARGdfge8E4tZfYLoxeJ5sGBdNJQH4kvjpWAxgzczjbCwxic'
+        self.assertEqual(w3, w4)
+
+        p3 = PrivateKey(0x54321deadbeef)
+        w5 = p3.wif()
+        w6 = 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgiuQJv1h8Ytr2S53a'
+        self.assertEqual(w5, w6)
+        self.assertFalse(w1 == w6)

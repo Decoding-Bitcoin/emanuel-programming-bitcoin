@@ -1,8 +1,9 @@
 import hashlib
 import hmac
-from random import randint
 
 from pybtc.constants import *
+from pybtc.helper import hash160
+from pybtc.base58 import encode_base58_checksum
 
 
 class FieldElement:
@@ -139,6 +140,9 @@ class S256Field(FieldElement):
     def __repr__(self):
         return '{:x}'.format(self.num).zfill(64)
 
+    def sqrt(self):
+        return self ** ((P + 1) // 4)
+
 
 class S256Point(Point):
     def __init__(self, x, y, a=None, b=None):
@@ -160,6 +164,48 @@ class S256Point(Point):
         total = u * g + v * self
         return total.x.num == sig.r
 
+    def sec(self, compressed=True):
+        """returns the binary version of the SEC format"""
+        if compressed:
+            prefix = 2 + (self.y.num % 2)
+            return prefix.to_bytes(1, 'big') + self.x.num.to_bytes(32, 'big')
+        else:
+            return b'\x04' + self.x.num.to_bytes(32, 'big') + self.y.num.to_bytes(32, 'big')
+
+    @classmethod
+    def parse(cls, sec_bin):
+        """returns a Point object from a SEC binary (not hex)"""
+        if sec_bin[0] == 4:
+            x = int.from_bytes(sec_bin[1:33], 'big')
+            y = int.from_bytes(sec_bin[33:], 'big')
+            return S256Point(x, y)
+        is_even = sec_bin[0] == 2
+        x = S256Field(int.from_bytes(sec_bin[1:], 'big'))
+        alpha = x ** 3 + S256Field(B)
+        beta = alpha.sqrt()
+        if beta.num % 2:
+            even_beta = S256Field(P - beta.num)
+            odd_beta = beta
+        else:
+            even_beta = beta
+            odd_beta = S256Field(P - beta.num)
+        if is_even:
+            return S256Point(x, even_beta)
+        else:
+            return S256Point(x, odd_beta)
+
+    def hash160(self, compressed=True):
+        return hash160(self.sec(compressed))
+
+    def address(self, compressed=True, testnet=False):
+        """Returns the address string"""
+        h160 = self.hash160(compressed)
+        if testnet:
+            prefix = b'\x6f'
+        else:
+            prefix = b'\x00'
+        return encode_base58_checksum(prefix + h160)
+
 
 class Signature:
     def __init__(self, r, s):
@@ -168,6 +214,19 @@ class Signature:
 
     def __repr__(self):
         return 'Signature({:x}, {:x})'.format(self.r, self.s)
+
+    def der(self):
+        result = self.encode_field(self.r)
+        result += self.encode_field(self.s)
+        return bytes([0x30, len(result)]) + result
+
+    @staticmethod
+    def encode_field(field):
+        field = field.to_bytes(32, 'big')
+        field = field.lstrip(b'\x00')
+        if field[0] & 0x80:
+            field = b'\x00' + field
+        return bytes([2, len(field)]) + field
 
 
 class PrivateKey:
@@ -209,4 +268,17 @@ class PrivateKey:
             k = hmac.new(k, v + b'\x00', s256).digest()
             v = hmac.new(k, v, s256).digest()
 
+    def wif(self, compressed=True, testnet=False):
+        secret_bytes = self.secret.to_bytes(32, 'big')
 
+        if testnet:
+            prefix = b'\xef'
+        else:
+            prefix = b'\x80'
+
+        if compressed:
+            suffix = b'\x01'
+        else:
+            suffix = b''
+
+        return encode_base58_checksum(prefix + secret_bytes + suffix)
