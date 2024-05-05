@@ -1,8 +1,9 @@
 import hashlib
 import hmac
+from io import BytesIO
 
 from pybtc.constants import *
-from pybtc.helper import hash160
+from pybtc.helper import hash160, big_endian_to_int
 from pybtc.base58 import encode_base58_checksum
 
 
@@ -219,6 +220,38 @@ class Signature:
         result = self.encode_field(self.r)
         result += self.encode_field(self.s)
         return bytes([0x30, len(result)]) + result
+
+    @classmethod
+    def parse(cls, signature_bin):
+        s = BytesIO(signature_bin)
+
+        marker = big_endian_to_int(s.read(1))
+        if marker != 0x30:
+            raise SyntaxError('Invalid signature marker')
+
+        sig_len = big_endian_to_int(s.read(1)) + 2
+        if sig_len != len(signature_bin):
+            raise SyntaxError('Invalid signature length')
+
+        r_marker = big_endian_to_int(s.read(1))
+        if r_marker != 0x02:
+            raise SyntaxError('Invalid signature r marker')
+
+        r_length = big_endian_to_int(s.read(1))
+        r = big_endian_to_int(s.read(r_length))
+
+        s_marker = big_endian_to_int(s.read(1))
+        if s_marker != 0x02:
+            raise SyntaxError('Invalid signature s marker')
+
+        s_length = big_endian_to_int(s.read(1))
+        s = big_endian_to_int(s.read(s_length))
+
+        total_len = 6 + r_length + s_length
+        if total_len != len(signature_bin):
+            raise SyntaxError('Invalid signature length')
+
+        return Signature(r, s)
 
     @staticmethod
     def encode_field(field):

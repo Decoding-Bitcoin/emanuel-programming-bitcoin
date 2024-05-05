@@ -20,6 +20,14 @@ def int_to_little_endian(i, size):
     return i.to_bytes(size, 'little')
 
 
+def big_endian_to_int(b):
+    return int.from_bytes(b, 'big')
+
+
+def int_to_big_endian(i, size):
+    return i.to_bytes(size, 'big')
+
+
 def read_varint(s):
     """read_varint reads a variable integer from a stream"""
     i = s.read(1)[0]

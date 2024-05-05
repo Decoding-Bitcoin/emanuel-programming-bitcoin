@@ -1,7 +1,8 @@
 import requests
 from io import BytesIO
 
-from helper import *
+from pybtc.helper import *
+from pybtc.script import *
 
 
 class Tx:
@@ -54,11 +55,12 @@ class Tx:
 
     def fee(self, testnet=False):
         fee = 0
-        for tx_out in self.tx_outs:
-            fee += tx_out.amount
 
         for tx_in in self.tx_ins:
-            fee -= tx_in.value(testnet)
+            fee += tx_in.value(testnet)
+
+        for tx_out in self.tx_outs:
+            fee -= tx_out.amount
 
         return fee
 
@@ -70,12 +72,12 @@ class Tx:
         input_qty = read_varint(stream)
         tx_ins = []
         for n in range(input_qty):
-            tx_ins.append(TxIn.parse(stream))
+            tx_ins.append(TxIn.parse(stream, testnet))
 
         output_qty = read_varint(stream)
         tx_outs = []
         for n in range(output_qty):
-            tx_outs.append(TxOut.parse(stream))
+            tx_outs.append(TxOut.parse(stream, testnet))
 
         serialized_lock_time = stream.read(4)
         lock_time = little_endian_to_int(serialized_lock_time)
@@ -125,16 +127,12 @@ class TxIn:
 
     @classmethod
     def parse(cls, stream, testnet=False):
-        serialized_tx_id = stream.read(32)
-        tx_id = little_endian_to_int(serialized_tx_id)
+        tx_id = stream.read(32)[::-1]
 
         serialized_tx_index = stream.read(4)
         tx_index = little_endian_to_int(serialized_tx_index)
 
-        script_sig = ''
-        script_sig_size = read_varint(stream)
-        for n in range(script_sig_size):
-            script_sig += bytes(stream.read(1))
+        script_sig = Script.parse(stream)
 
         serialized_sequence = stream.read(4)
         sequence = little_endian_to_int(serialized_sequence)
@@ -161,10 +159,7 @@ class TxOut:
         serialized_amount = stream.read(8)
         amount = little_endian_to_int(serialized_amount)
 
-        script_pubkey = ''
-        script_pubkey_size = read_varint(stream)
-        for n in range(script_pubkey_size):
-            script_pubkey += bytes(stream.read(1))
+        script_pubkey = Script.parse(stream)
 
         return TxOut(amount, script_pubkey)
 
